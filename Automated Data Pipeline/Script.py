@@ -1,6 +1,7 @@
 # https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv
 
 import requests, argparse, os, csv, json
+from statistics import mean, median, multimode, stdev
 
 clean_help="drop_mv: removes rows with missing values" \
             "drop_dr: remove duplicate rows only" \
@@ -90,20 +91,17 @@ def statistics_json(r_path,s_path):
                 except ValueError:
                     continue
                 else:
-                    tmp.append(row[header]) 
+                    tmp.append(row[header])
             n=len(tmp)
+            mode=multimode(tmp)
             if n==0: continue
-            srt_tmp=sorted(tmp)
-            sq_tmp=[x**2 for x in tmp]
-            mean=sum(tmp)/n
-            mean_sq=sum(sq_tmp)/n
-            median=(srt_tmp[n//2] if n%2!=0 else (srt_tmp[n//2-1]+srt_tmp[n//2])/2)
-            mode=""
-            std_dev=(mean_sq-(mean**2))**(1/2)
-            stats[f"{header} average"]= mean
-            stats[f"{header} median"]= median
-            stats[f"{header} mode"]= mode
-            stats[f"{header} std_dev"]= std_dev
+            stats[f"{header} average"]= mean(tmp)
+            stats[f"{header} median"]= median(tmp)
+            if len(mode)==n:
+                stats[f"{header} mode"]= "No unique Value"
+            else:
+                stats[f"{header} mode"]= mode
+            stats[f"{header} std_dev"]= stdev(tmp)
             file.seek(0)
             reader = csv.DictReader(file)
 
@@ -135,3 +133,5 @@ def main():
 
 if __name__=="__main__":
     main()
+
+## used statistics module for calculating stats
