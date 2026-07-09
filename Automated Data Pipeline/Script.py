@@ -37,78 +37,135 @@ def rm_missing(r_path,c_path):
 
     out=[]
     fieldname=None
-    with open(r_path, "r") as file:
-        reader=csv.DictReader(file)
-        fieldname=reader.fieldnames
-        for row in reader:
-            is_missing=False
-            for key,value in row.items():
-                if value.strip()=="":
-                    is_missing=True
-                    break
-            if not is_missing:
-                out.append(row)
-    
-    with open(c_path, "w", newline="") as file:
-        writer=csv.DictWriter(file,fieldnames=fieldname)
-        writer.writeheader()
-        writer.writerows(out)
 
-    print("Successfully Removed Rows with Missing Values!!")
+    if not is_empty_file(r_path):
+        with open(r_path, "r") as file:
+            try:
+                reader=csv.DictReader(file)
+            except csv.Error:
+                print("Error: Failed to parse CSV. Please verify that the source file is a valid CSV text file.")
+            else:
+                fieldname=reader.fieldnames
+                for row in reader:
+                    is_missing=False
+                    for key,value in row.items():
+                        if value.strip()=="":
+                            is_missing=True
+                            break
+                    if not is_missing:
+                        out.append(row)
+    else:
+        print("Error: The dataset is empty or corrupted.")
+    
+    try:
+        with open(c_path, "w", newline="") as file:
+            writer=csv.DictWriter(file,fieldnames=fieldname)
+            writer.writeheader()
+            writer.writerows(out)
+        print("Successfully Removed Rows with Missing Values!!")
+    except (FileNotFoundError, PermissionError):
+        print("Error: Permission denied. Please check if the output files are open in another program or if you have write access to the folder.")
+
 
 def rm_duplicate(r_path,c_path):
     
     out=set()
     fieldname=None
-    with open(r_path, "r") as file:
-        reader=csv.DictReader(file)
-        fieldname=reader.fieldnames
-        for row in reader:
-            dict_tuple=tuple(row.items())
-            out.add(dict_tuple)
+    
+    if not is_empty_file(r_path):
+        with open(r_path, "r") as file:
+            try:
+                reader=csv.DictReader(file)
+            except csv.Error:
+                print("Error: Failed to parse CSV. Please verify that the source file is a valid CSV text file.")
+            else:
+                fieldname=reader.fieldnames
+                for row in reader:
+                    dict_tuple=tuple(row.items())
+                    out.add(dict_tuple)
+    else:
+        print("Error: The dataset is empty or corrupted.")
+        
+
     
     out= list(out)
 
-    with open(c_path, "w", newline="") as file:
-        writer=csv.DictWriter(file,fieldnames=fieldname)
-        writer.writeheader()
-        for row in out:
-            writer.writerow(dict(row))  
-
-    print("Successfully Removed Duplicate Rows!!")
+    try:
+        with open(c_path, "w", newline="") as file:
+            writer=csv.DictWriter(file,fieldnames=fieldname)
+            writer.writeheader()
+            for row in out:
+                writer.writerow(dict(row))  
+        print("Successfully Removed Duplicate Rows!!")
+    except (FileNotFoundError, PermissionError):
+        print("Error: Permission denied. Please check if the output files are open in another program or if you have write access to the folder.")
+        
 
 def statistics_json(r_path,s_path):
     stats={}
-    with open(r_path, "r") as file:
-        reader=csv.DictReader(file)
-        headers=reader.fieldnames
 
-        for header in headers:
-            tmp=[]
-            for row in reader:
-                try: 
-                    row[header]=float(row[header])
-                except ValueError:
-                    continue
-                else:
-                    tmp.append(row[header])
-            n=len(tmp)
-            mode=multimode(tmp)
-            if n==0: continue
-            stats[f"{header} average"]= mean(tmp)
-            stats[f"{header} median"]= median(tmp)
-            if len(mode)==n:
-                stats[f"{header} mode"]= "No unique Value"
+    if not is_empty_file(r_path):
+        with open(r_path, "r") as file:
+            try:
+                reader=csv.DictReader(file)
+            except csv.Error:
+                print("Error: Failed to parse CSV. Please verify that the source file is a valid CSV text file.")
             else:
-                stats[f"{header} mode"]= mode
-            stats[f"{header} std_dev"]= stdev(tmp)
-            file.seek(0)
-            reader = csv.DictReader(file)
+                headers=reader.fieldnames
 
-    with open(s_path, "w") as file:
-        json.dump(stats, file, indent=2)
+                dict_list=[]
+                for row in reader:
+                    dict_list.append(row)
+                
+                for header in headers:
+                    tmp=[]
+                    for dict in dict_list:
+                        try: 
+                            dict[header]=float(dict[header])
+                        except ValueError:
+                            continue
+                        else:
+                            tmp.append(dict[header])
+                    n=len(tmp)
+                    mode=multimode(tmp)
+                    if n==0 : continue
+                    stats[f"{header} average"]= mean(tmp)
+                    stats[f"{header} median"]= median(tmp)
+                    if n>1 and len(mode)==n:
+                        stats[f"{header} mode"]= "No unique Value"
+                    else:
+                        stats[f"{header} mode"]= mode
+                    if n>1:
+                        stats[f"{header} std_dev"]= stdev(tmp)
+                    else:
+                        stats[f"{header} std_dev"]= "Insufficient Data"
+    else:
+        print("Error: The dataset is empty or corrupted.")
+
+    try:
+        with open(s_path, "w") as file:
+            json.dump(stats, file, indent=2)
+    except (FileNotFoundError, PermissionError):
+        print("Error: Permission denied. Please check if the output files are open in another program or if you have write access to the folder.")
 
 
+def is_empty_file(f_path):
+    
+    rows=[]
+    if os.path.exists(f_path):
+        with open(f_path) as f:
+            try:
+                reader=csv.DictReader(f)
+            except csv.Error:
+                print("Error: Failed to parse CSV. Please verify that the source file is a valid CSV text file.")
+            else:
+                for row in reader:
+                    rows.append(row)
+            
+        if not os.path.getsize(f_path)==0 or len(rows)!=0:
+            return False
+    return True
+    
 
 def main():
     r_path=os.path.join(args.output,"raw_data.csv")
@@ -127,11 +184,13 @@ def main():
     elif args.clean=="all":
         rm_missing(r_path,c_path)
         rm_duplicate(c_path,c_path)
-    if args.stats=="Yes":
+    if args.stats in {"Yes", "y"}:
         s_path=os.path.join(args.output,"stats.json")
-        statistics_json(c_path,s_path)
+
+        if not is_empty_file(c_path):
+            statistics_json(c_path,s_path)
+        else:
+            print("Warning: No rows remained after data cleaning. Skipping statistics calculation.")
 
 if __name__=="__main__":
     main()
-
-## used statistics module for calculating stats
