@@ -1,11 +1,3 @@
-# for key, value in row.items():
-#                 try:
-#                     if isinstance(value,float):
-#                         row[key]=float(value)
-#                     elif isinstance(value,int):
-#                         row[key]=int(value)
-#                 except ValueError:
-#                     continue
 # https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv
 
 import requests, argparse, os, csv, json
@@ -21,6 +13,7 @@ parser.add_argument("--url", type=str, help="URL", default="https://raw.githubus
 # parser.add_argument("--url", type=str, help="URL",)
 parser.add_argument("--output", type=str, default="data/", help="Output folder path")
 parser.add_argument("--clean", type=str, help=clean_help, choices=["drop_mv", "drop_dr", "all"], default="all")
+parser.add_argument("--stats", type=str, help="Calculate stats Yes(y)/No(n)", choices=["Yes", "y", "No", "n"], default="Yes")
 args=parser.parse_args()
 
 def download_csv(url, output):
@@ -122,7 +115,6 @@ def statistics_json(r_path,s_path):
 def main():
     r_path=os.path.join(args.output,"raw_data.csv")
     c_path=os.path.join(args.output,"cleaned_data.csv")
-    s_path=os.path.join(args.output,"stats.json")
     
     try: 
         download_csv(args.url, args.output)
@@ -137,7 +129,9 @@ def main():
     elif args.clean=="all":
         rm_missing(r_path,c_path)
         rm_duplicate(c_path,c_path)
-    statistics_json(c_path,s_path)
+    if args.stats=="Yes":
+        s_path=os.path.join(args.output,"stats.json")
+        statistics_json(c_path,s_path)
 
 if __name__=="__main__":
     main()
